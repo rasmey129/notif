@@ -1,10 +1,11 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Import for clipboard functionality
 import 'firebase_options.dart';
 
 Future<void> _messageHandler(RemoteMessage message) async {
-  print('background message ${message.notification!.body}');
+  print('Background message ${message.notification!.body}');
 }
 
 void main() async {
@@ -41,18 +42,24 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   late FirebaseMessaging messaging;
   String? notificationText;
+  String? fcmToken;
 
   @override
   void initState() {
     super.initState();
     messaging = FirebaseMessaging.instance;
+
     messaging.subscribeToTopic("messaging");
+
     messaging.getToken().then((value) {
-      print(value);
+      setState(() {
+        fcmToken = value;
+      });
+      print("FCM Token: $fcmToken"); 
     });
-    
+
     FirebaseMessaging.onMessage.listen((RemoteMessage event) {
-      print("message received");
+      print("Message received");
       print(event.notification!.body);
       print(event.data.values);
       showDialog(
@@ -79,13 +86,41 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _copyToClipboard() {
+    if (fcmToken != null) {
+      Clipboard.setData(ClipboardData(text: fcmToken!)).then((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("FCM Token copied to clipboard")),
+        );
+      });
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("FCM Token not available")),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.title!),
+        title: Text(widget.title ?? 'Default Title'),
       ),
-      body: Center(child: Text("Messaging Tutorial")),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text("Messaging Tutorial"),
+            SizedBox(height: 20),
+            Text("FCM Token: ${fcmToken ?? 'Token not available'}"),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: _copyToClipboard,
+              child: Text("Copy FCM Token"),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
