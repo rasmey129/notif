@@ -43,6 +43,7 @@ class _MyHomePageState extends State<MyHomePage> {
   late FirebaseMessaging messaging;
   String? notificationText;
   String? fcmToken;
+  
 
   @override
   void initState() {
@@ -58,28 +59,31 @@ class _MyHomePageState extends State<MyHomePage> {
       print("FCM Token: $fcmToken"); 
     });
 
-    FirebaseMessaging.onMessage.listen((RemoteMessage event) {
-      print("Message received");
-      print(event.notification!.body);
-      print(event.data.values);
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      print("Message received: ${message.notification?.body}");
+
+      String type = message.data['type'] ?? 'regular';
+      String messageContent = message.notification?.body ?? "No message body";
+
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text("Notification"),
-            content: Text(event.notification!.body!),
+            title: Text(type == 'important' ? "Important Notification" : "Notification"),
+            content: Text(messageContent),
             actions: [
               TextButton(
                 child: Text("Ok"),
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-              )
+              ),
             ],
           );
         },
       );
     });
+
 
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       print('Message clicked!');
