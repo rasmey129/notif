@@ -1,39 +1,36 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Import for clipboard functionality
+import 'package:flutter/services.dart'; 
 import 'firebase_options.dart';
 
 Future<void> _messageHandler(RemoteMessage message) async {
-  print('Background message ${message.notification!.body}');
+  print('Background message received: ${message.notification?.body}');
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   FirebaseMessaging.onBackgroundMessage(_messageHandler);
-  runApp(MessagingTutorial());
+  runApp(MessagingApp());
 }
 
-class MessagingTutorial extends StatelessWidget {
+class MessagingApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Firebase Messaging',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
+      theme: ThemeData(primarySwatch: Colors.blue),
       home: MyHomePage(title: 'Firebase Messaging'),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key? key, this.title}) : super(key: key);
   final String? title;
+
+  MyHomePage({Key? key, this.title}) : super(key: key);
 
   @override
   _MyHomePageState createState() => _MyHomePageState();
@@ -41,9 +38,7 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   late FirebaseMessaging messaging;
-  String? notificationText;
   String? fcmToken;
-  
 
   @override
   void initState() {
@@ -52,31 +47,47 @@ class _MyHomePageState extends State<MyHomePage> {
 
     messaging.subscribeToTopic("messaging");
 
-    messaging.getToken().then((value) {
-      setState(() {
-        fcmToken = value;
-      });
-      print("FCM Token: $fcmToken"); 
-    });
-
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       print("Message received: ${message.notification?.body}");
 
       String type = message.data['type'] ?? 'regular';
-      String messageContent = message.notification?.body ?? "No message body";
+      String? imageUrl = message.notification?.android?.imageUrl;
 
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text(type == 'important' ? "Important Notification" : "Notification"),
-            content: Text(messageContent),
+            title: Text(
+              type == 'important' ? "Important Notification" : "Notification",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: type == 'important' ? Colors.red : Colors.black,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  message.notification?.body ?? "No message body",
+                  style: TextStyle(
+                    color: type == 'important' ? Colors.red : Colors.black,
+                    fontWeight: type == 'important' ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                if (imageUrl != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 15.0),
+                    child: Image.network(imageUrl),
+                  ),
+              ],
+            ),
             actions: [
               TextButton(
-                child: Text("Ok"),
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
+                child: Text(
+                  "Ok",
+                  style: TextStyle(color: type == 'important' ? Colors.red : Colors.black),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
               ),
             ],
           );
@@ -84,44 +95,22 @@ class _MyHomePageState extends State<MyHomePage> {
       );
     });
 
-
-    FirebaseMessaging.onMessageOpenedApp.listen((message) {
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
       print('Message clicked!');
     });
   }
 
-  void _copyToClipboard() {
-    if (fcmToken != null) {
-      Clipboard.setData(ClipboardData(text: fcmToken!)).then((_) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("FCM Token copied to clipboard")),
-        );
-      });
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("FCM Token not available")),
-      );
-    }
-  }
+
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.title ?? 'Default Title'),
-      ),
+      appBar: AppBar(title: Text(widget.title ?? 'Firebase Messaging')),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text("Messaging Tutorial"),
-            SizedBox(height: 20),
-            Text("FCM Token: ${fcmToken ?? 'Token not available'}"),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _copyToClipboard,
-              child: Text("Copy FCM Token"),
-            ),
           ],
         ),
       ),
